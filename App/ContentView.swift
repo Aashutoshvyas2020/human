@@ -5,6 +5,7 @@ struct ContentView: View {
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.openURL) private var openURL
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @ScaledMetric(relativeTo: .subheadline) private var markerWidth: CGFloat = 58
   @State private var session = FoldSession()
   @State private var showStepCheck = false
   @State private var checkTask: Task<Void, Never>?
@@ -14,18 +15,18 @@ struct ContentView: View {
       ZStack {
         Color(uiColor: .systemBackground).ignoresSafeArea()
 
-        ArrangementView {
-          information(holdRingSize: min(128, max(76, geometry.size.height * 0.21)))
-        } secondary: {
-          FoldProtractor(
-            angle: session.capture.angle,
-            target: session.visualTarget,
-            matched: session.phase == .active && (session.snapAngle != nil || session.isInRange)
-          )
-          .animation(reduceMotion ? nil : .smooth(duration: 0.08), value: session.capture.angle)
-          .padding(18)
-        }
-        .arrangementViewStyle(.overlay)
+        FoldProtractor(
+          angle: session.capture.angle,
+          target: session.visualTarget,
+          matched: session.phase == .active && (session.snapAngle != nil || session.isInRange)
+        )
+        .animation(reduceMotion ? nil : .smooth(duration: 0.08), value: session.capture.angle)
+        .padding(18)
+
+        information(
+          holdRingSize: min(104, max(56, geometry.size.height * 0.17)),
+          availableWidth: geometry.size.width
+        )
 
         if showStepCheck && session.phase == .active {
           checkScreen(size: geometry.size, completed: false)
@@ -66,7 +67,7 @@ struct ContentView: View {
     }
   }
 
-  private func information(holdRingSize: CGFloat) -> some View {
+  private func information(holdRingSize: CGFloat, availableWidth: CGFloat) -> some View {
     VStack(spacing: 14) {
       Text("Bend to the target angle")
         .font(.system(.title2, design: .rounded).weight(.semibold))
@@ -74,37 +75,28 @@ struct ContentView: View {
         .accessibilityAddTraits(.isHeader)
 
       if session.machine != nil {
-        progressMarkers
+        progressMarkers(availableWidth: availableWidth)
       }
 
-      if session.phase == .active && session.machine?.step == 2 {
-        Spacer(minLength: 10)
-        holdProgress(size: holdRingSize)
-        Spacer(minLength: 10)
-      } else {
-        Spacer(minLength: 80)
-      }
-
-      if session.phase == .checking {
-        ProgressView("Checking…")
-      }
-
-      if session.phase == .retry {
-        Button("Try a new challenge", systemImage: "arrow.clockwise") { session.retry() }
-          .buttonStyle(.borderedProminent)
-      }
-
-      if session.phase == .unavailable {
-        Text("iPhone Duo hinge unavailable")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
-
-      if session.phase == .invalidLink {
-        Text("Open verification from the website")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
+      Spacer(minLength: holdRingSize + 28)
+        .overlay {
+          if session.phase == .active && session.machine?.step == 2 {
+            holdProgress(size: holdRingSize)
+          } else if session.phase == .checking {
+            ProgressView("Checking…")
+          } else if session.phase == .retry {
+            Button("Try a new challenge", systemImage: "arrow.clockwise") { session.retry() }
+              .buttonStyle(.borderedProminent)
+          } else if session.phase == .unavailable {
+            Text("iPhone Duo hinge unavailable")
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+          } else if session.phase == .invalidLink {
+            Text("Open verification from the website")
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+          }
+        }
 
       angleReadouts
     }
@@ -113,16 +105,21 @@ struct ContentView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
-  private var progressMarkers: some View {
+  private func progressMarkers(availableWidth: CGFloat) -> some View {
     HStack(spacing: 18) {
       ForEach(0..<3) { index in
-        if index < completedSteps {
-          Image(systemName: "checkmark.circle.fill")
-            .foregroundStyle(.green)
-        } else if let targets = session.machine?.challenge.targets {
-          Text("\(Int(targets[index]))°")
-            .foregroundStyle(index == completedSteps ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+        Group {
+          if index < completedSteps {
+            Image(systemName: "checkmark.circle.fill")
+              .foregroundStyle(.green)
+          } else if let targets = session.machine?.challenge.targets {
+            Text("\(Int(targets[index]))°")
+              .foregroundStyle(index == completedSteps ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+              .lineLimit(1)
+              .minimumScaleFactor(0.7)
+          }
         }
+        .frame(width: min(markerWidth, max(32, (availableWidth - 84) / 3)))
       }
     }
     .font(.subheadline.weight(.semibold))
