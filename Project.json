@@ -5,6 +5,7 @@
   },
   "name": "Project",
   "options": {
+    "deploymentTarget": { "iOS": "27.1" },
     "groupSortPosition": "bottom",
     "transitivelyLinkDependencies": false
   },
@@ -13,11 +14,12 @@
   },
   "targets": {
     "Duo Fold": {
-      "deploymentTarget": "26.0",
+      "deploymentTarget": "27.1",
       "info": {
         "path": "App/Info.plist",
         "properties": {
-          "CFBundleDisplayName": "New Project",
+          "CFBundleDisplayName": "Duo Fold",
+          "CFBundleURLTypes": [{ "CFBundleURLName": "Duo Fold verification", "CFBundleURLSchemes": ["duofold"] }],
           "CFBundleShortVersionString": "1.0",
           "CFBundleVersion": "1",
           "ITSAppUsesNonExemptEncryption": false,
