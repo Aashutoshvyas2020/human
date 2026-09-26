@@ -3,6 +3,7 @@ import OSLog
 
 @Observable @MainActor
 final class FoldSession {
+  static let snapFeedbackSeconds = 0.24
   enum Phase { case idle, waiting, active, checking, verified, retry, unavailable, invalidLink }
   var capture = HingeCapture()
   private(set) var phase = Phase.idle
@@ -34,6 +35,10 @@ final class FoldSession {
     return abs(angle - target) <= FoldChallenge.tolerance
   }
   var visualTarget: Double? { phase == .active ? (snapAngle ?? target) : nil }
+  var isVisuallyMatched: Bool {
+    guard let angle = capture.angle, let visualTarget else { return false }
+    return abs(angle - visualTarget) <= FoldChallenge.tolerance
+  }
   var hasEnteredHold: Bool { holdCueSent }
 
   func open(_ url: URL) {
@@ -93,7 +98,7 @@ final class FoldSession {
     updateFeedback(previousStep: previousStep)
     if let nextStep = machine?.step, nextStep > previousStep, nextStep < 3 {
       snapAngle = previousTarget
-      snapUntil = capture.now + 0.08
+      snapUntil = capture.now + Self.snapFeedbackSeconds
     }
     updateProgress()
     finishIfReady()

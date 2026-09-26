@@ -17,7 +17,7 @@ struct ContentView: View {
         FoldProtractor(
           angle: session.capture.angle,
           target: session.visualTarget,
-          matched: session.phase == .active && (session.snapAngle != nil || session.isInRange)
+          matched: session.isVisuallyMatched
         )
         .padding(18)
         .frame(
@@ -56,8 +56,11 @@ struct ContentView: View {
     .onChange(of: session.feedback.step) { oldStep, newStep in
       guard newStep > oldStep, session.phase == .active else { return }
       checkTask?.cancel()
-      showStepCheck = true
+      showStepCheck = false
       checkTask = Task { @MainActor in
+        do { try await Task.sleep(for: .seconds(FoldSession.snapFeedbackSeconds)) } catch { return }
+        guard session.phase == .active else { return }
+        showStepCheck = true
         do { try await Task.sleep(for: .milliseconds(900)) } catch { return }
         showStepCheck = false
       }
@@ -90,7 +93,7 @@ struct ContentView: View {
       Spacer(minLength: holdRingSize + 28)
         .overlay {
           Group {
-            if session.phase == .active && session.machine?.step == 2 {
+            if session.phase == .active && session.machine?.step == 2 && session.snapAngle == nil {
               holdProgress(size: holdRingSize)
             } else if session.phase == .checking {
               ProgressView("Checking…")
@@ -149,7 +152,7 @@ struct ContentView: View {
     HStack(alignment: .firstTextBaseline, spacing: 20) {
       angleReadout(label: "LIVE", value: session.capture.angle)
       Spacer(minLength: 0)
-      angleReadout(label: "TARGET", value: session.phase == .active ? session.target : nil)
+      angleReadout(label: "TARGET", value: session.visualTarget)
     }
     .frame(maxWidth: 460)
   }
