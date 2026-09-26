@@ -10,13 +10,41 @@ struct ContentView: View {
   @State private var checkTask: Task<Void, Never>?
 
   var body: some View {
-    ArrangementView {
-      challengeSurface
-    } secondary: {
-      Color(uiColor: .systemBackground)
+    GeometryReader { geometry in
+      // Keep the challenge on the display center even when a side bar insets the safe area.
+      let centerCorrection = (geometry.safeAreaInsets.trailing - geometry.safeAreaInsets.leading) / 2
+      ZStack {
+        FoldProtractor(
+          angle: session.capture.angle,
+          target: session.visualTarget,
+          matched: session.isVisuallyMatched
+        )
+        .padding(18)
+        .frame(
+          width: geometry.size.width + geometry.safeAreaInsets.leading + geometry.safeAreaInsets.trailing,
+          height: geometry.size.height
+        )
+        .offset(x: centerCorrection)
+        .transaction { $0.animation = nil }
+
+        information(
+          holdRingSize: min(104, max(56, geometry.size.height * 0.17)),
+          availableWidth: geometry.size.width,
+          centerCorrection: centerCorrection
+        )
+
+        if showStepCheck && session.phase == .active {
+          checkScreen(size: geometry.size, completed: false, centerCorrection: centerCorrection)
+            .id(session.feedback.step)
+        }
+
+        if session.phase == .verified {
+          checkScreen(size: geometry.size, completed: true, centerCorrection: centerCorrection)
+        }
+      }
+      .frame(width: geometry.size.width, height: geometry.size.height)
+      .background(Color(uiColor: .systemBackground).ignoresSafeArea())
     }
-    .arrangementViewStyle(.overlay)
-    .background(Color(uiColor: .systemBackground).ignoresSafeArea())
     .modifier(FoldFeedbackModifier(feedback: session.feedback))
     .onHingeChange { _, context in session.receive(context) }
     .onOpenURL { session.open($0) }
@@ -49,45 +77,17 @@ struct ContentView: View {
     }
   }
 
-  private var challengeSurface: some View {
-    GeometryReader { geometry in
-      ZStack {
-        FoldProtractor(
-          angle: session.capture.angle,
-          target: session.visualTarget,
-          matched: session.isVisuallyMatched
-        )
-        .padding(18)
-        .transaction { $0.animation = nil }
-
-        information(
-          holdRingSize: min(104, max(56, geometry.size.height * 0.17)),
-          availableWidth: geometry.size.width
-        )
-
-        if showStepCheck && session.phase == .active {
-          checkScreen(size: geometry.size, completed: false)
-            .id(session.feedback.step)
-        }
-
-        if session.phase == .verified {
-          checkScreen(size: geometry.size, completed: true)
-        }
-      }
-      .frame(width: geometry.size.width, height: geometry.size.height)
-      .background(Color(uiColor: .systemBackground))
-    }
-  }
-
-  private func information(holdRingSize: CGFloat, availableWidth: CGFloat) -> some View {
+  private func information(holdRingSize: CGFloat, availableWidth: CGFloat, centerCorrection: CGFloat) -> some View {
     VStack(spacing: 14) {
       Text("Bend to the target angle")
         .font(.system(.title2, design: .rounded).weight(.semibold))
         .multilineTextAlignment(.center)
         .accessibilityAddTraits(.isHeader)
+        .offset(x: centerCorrection)
 
       if session.machine != nil {
         progressMarkers(availableWidth: availableWidth)
+          .offset(x: centerCorrection)
       }
 
       Spacer(minLength: holdRingSize + 28)
@@ -110,6 +110,7 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
             }
           }
+          .offset(x: centerCorrection)
         }
 
       angleReadouts
@@ -185,7 +186,7 @@ struct ContentView: View {
     .accessibilityValue("\(Int(session.progress * 100)) percent, \(session.isInRange ? "holding" : "paused")")
   }
 
-  private func checkScreen(size: CGSize, completed: Bool) -> some View {
+  private func checkScreen(size: CGSize, completed: Bool, centerCorrection: CGFloat) -> some View {
     ZStack {
       VStack(spacing: 16) {
         CompletionCheckmark(size: min(size.width, size.height) * 0.62, startsFilled: completed)
@@ -205,6 +206,7 @@ struct ContentView: View {
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .offset(x: centerCorrection)
     }
     .frame(width: size.width, height: size.height)
     .background(Color(uiColor: .systemBackground).ignoresSafeArea())
