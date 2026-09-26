@@ -4,7 +4,6 @@ import SwiftUI
 struct ContentView: View {
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.openURL) private var openURL
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @ScaledMetric(relativeTo: .subheadline) private var markerWidth: CGFloat = 58
   @State private var session = FoldSession()
   @State private var showStepCheck = false
@@ -12,31 +11,39 @@ struct ContentView: View {
 
   var body: some View {
     GeometryReader { geometry in
+      // Keep the challenge on the display center even when a side bar insets the safe area.
+      let centerCorrection = (geometry.safeAreaInsets.trailing - geometry.safeAreaInsets.leading) / 2
       ZStack {
-        Color(uiColor: .systemBackground).ignoresSafeArea()
-
         FoldProtractor(
           angle: session.capture.angle,
           target: session.visualTarget,
           matched: session.phase == .active && (session.snapAngle != nil || session.isInRange)
         )
-        .animation(reduceMotion ? nil : .smooth(duration: 0.08), value: session.capture.angle)
         .padding(18)
+        .frame(
+          width: geometry.size.width + geometry.safeAreaInsets.leading + geometry.safeAreaInsets.trailing,
+          height: geometry.size.height
+        )
+        .offset(x: centerCorrection)
+        .transaction { $0.animation = nil }
 
         information(
           holdRingSize: min(104, max(56, geometry.size.height * 0.17)),
-          availableWidth: geometry.size.width
+          availableWidth: geometry.size.width,
+          centerCorrection: centerCorrection
         )
 
         if showStepCheck && session.phase == .active {
-          checkScreen(size: geometry.size, completed: false)
+          checkScreen(size: geometry.size, completed: false, centerCorrection: centerCorrection)
             .id(session.feedback.step)
         }
 
         if session.phase == .verified {
-          checkScreen(size: geometry.size, completed: true)
+          checkScreen(size: geometry.size, completed: true, centerCorrection: centerCorrection)
         }
       }
+      .frame(width: geometry.size.width, height: geometry.size.height)
+      .background(Color(uiColor: .systemBackground).ignoresSafeArea())
     }
     .modifier(FoldFeedbackModifier(feedback: session.feedback))
     .onHingeChange { _, context in session.receive(context) }
@@ -67,35 +74,40 @@ struct ContentView: View {
     }
   }
 
-  private func information(holdRingSize: CGFloat, availableWidth: CGFloat) -> some View {
+  private func information(holdRingSize: CGFloat, availableWidth: CGFloat, centerCorrection: CGFloat) -> some View {
     VStack(spacing: 14) {
       Text("Bend to the target angle")
         .font(.system(.title2, design: .rounded).weight(.semibold))
         .multilineTextAlignment(.center)
         .accessibilityAddTraits(.isHeader)
+        .offset(x: centerCorrection)
 
       if session.machine != nil {
         progressMarkers(availableWidth: availableWidth)
+          .offset(x: centerCorrection)
       }
 
       Spacer(minLength: holdRingSize + 28)
         .overlay {
-          if session.phase == .active && session.machine?.step == 2 {
-            holdProgress(size: holdRingSize)
-          } else if session.phase == .checking {
-            ProgressView("Checking…")
-          } else if session.phase == .retry {
-            Button("Try a new challenge", systemImage: "arrow.clockwise") { session.retry() }
-              .buttonStyle(.borderedProminent)
-          } else if session.phase == .unavailable {
-            Text("iPhone Duo hinge unavailable")
-              .font(.subheadline)
-              .foregroundStyle(.secondary)
-          } else if session.phase == .invalidLink {
-            Text("Open verification from the website")
-              .font(.subheadline)
-              .foregroundStyle(.secondary)
+          Group {
+            if session.phase == .active && session.machine?.step == 2 {
+              holdProgress(size: holdRingSize)
+            } else if session.phase == .checking {
+              ProgressView("Checking…")
+            } else if session.phase == .retry {
+              Button("Try a new challenge", systemImage: "arrow.clockwise") { session.retry() }
+                .buttonStyle(.borderedProminent)
+            } else if session.phase == .unavailable {
+              Text("iPhone Duo hinge unavailable")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            } else if session.phase == .invalidLink {
+              Text("Open verification from the website")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
           }
+          .offset(x: centerCorrection)
         }
 
       angleReadouts
@@ -171,9 +183,8 @@ struct ContentView: View {
     .accessibilityValue("\(Int(session.progress * 100)) percent, \(session.isInRange ? "holding" : "paused")")
   }
 
-  private func checkScreen(size: CGSize, completed: Bool) -> some View {
+  private func checkScreen(size: CGSize, completed: Bool, centerCorrection: CGFloat) -> some View {
     ZStack {
-      Color(uiColor: .systemBackground).ignoresSafeArea()
       VStack(spacing: 16) {
         CompletionCheckmark(size: min(size.width, size.height) * 0.62, startsFilled: completed)
         if completed {
@@ -192,7 +203,10 @@ struct ContentView: View {
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .offset(x: centerCorrection)
     }
+    .frame(width: size.width, height: size.height)
+    .background(Color(uiColor: .systemBackground).ignoresSafeArea())
     .accessibilityElement(children: .combine)
     .accessibilityLabel(completed ? "Human Verified" : "Fold matched")
   }

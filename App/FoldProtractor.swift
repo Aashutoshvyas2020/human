@@ -1,15 +1,9 @@
 import SwiftUI
 
-struct FoldProtractor: View, Animatable {
+struct FoldProtractor: View {
   var angle: Double?
   var target: Double?
   var matched: Bool
-
-  // Rendering can interpolate; validation always reads the captured raw angle.
-  var animatableData: Double {
-    get { angle ?? 0 }
-    set { if angle != nil { angle = newValue } }
-  }
 
   var body: some View {
     Canvas { context, size in
