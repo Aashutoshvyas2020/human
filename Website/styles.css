@@ -1,4 +1,4 @@
-:root { font-family: -apple-system, BlinkMacSystemFont, sans-serif; color-scheme: light dark; color: #19191f; background: #f6f6fa; --accent: #5049d5; }
+:root { font-family: -apple-system, BlinkMacSystemFont, sans-serif; color-scheme: light dark; color: #19191f; background: #f6f6fa; --accent: #111113; }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: max(32px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
 main { width: min(100%, 440px); text-align: center; }
@@ -12,5 +12,5 @@ button, #open-app { display: block; width: 100%; min-height: 52px; padding: 15px
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
 #status { min-height: 1.5em; font-size: .9375rem; }
 .note { font-size: .8125rem; margin-top: 40px; }
-@media (prefers-color-scheme: dark) { :root { background: #101014; color: #f5f5fa; --accent: #aaa5ff; } p { color: #b7b7c6; } button { background: #625bea; color: #fff; } }
+@media (prefers-color-scheme: dark) { :root { background: #101014; color: #f5f5fa; --accent: #f5f5fa; } p { color: #b7b7c6; } button { background: #f5f5fa; color: #101014; } }
 @media (prefers-contrast: more) { p { color: inherit; } .fold { stroke-width: 4; } }

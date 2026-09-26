@@ -179,7 +179,7 @@ final class FoldSession {
         self.phase = .verified
         self.feedback.completeStep()
         self.announcement = "Human Verified"
-        do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+        do { try await Task.sleep(for: .milliseconds(420)) } catch { return }
         guard !Task.isCancelled, self.attempt == id, self.isActive else { return }
         self.prepareReturn()
       }

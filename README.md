@@ -8,7 +8,7 @@ Build and run the **Duo Fold** target in Bitrig with the installed iOS 27.1 SDK.
 
 Publish the contents of `Website/` on an HTTPS static host (retain relative paths). No configuration or build step is required. Open that URL in Safari on the Duo with the app installed and tap **Verify**. The callback is derived from the deployed page URL. Use **Open Duo Fold** if Safari blocks automatic app opening.
 
-Flow: **Verify → Match the fold → fold → fold → hold → Checking… → Human Verified → Verified ✓**.
+Flow: **Verify → Bend to the target angle → fold → fold → hold → Checking… → Human Verified → Verified ✓**.
 
 The site must return to the same browser profile/origin that started verification. It uses localStorage for the pending session across tabs, and sessionStorage to retain the successful display in the returning tab. Only the latest pending session is active. This is intentionally demo-level trust; forged callbacks and modified clients are outside scope.
 
@@ -17,9 +17,9 @@ The site must return to the same browser profile/origin that started verificatio
 - `App/Core/`: pure generator, sample/trace types, event reducer, replay validator, and URL contract. Also compiled as a Swift package for deterministic tests.
 - `HingeCapture`: real `onHingeChange` input plus a `ContinuousClock`. No timers generate sensor readings.
 - `FoldSession`: main-actor lifecycle, attempt cancellation, feedback events, local validation, and browser return.
-- `FoldSilhouette` / `ContentView`: continuous physical visualization and system arrangement layout; `FoldFeedback` owns haptic triggers.
+- `FoldProtractor` / `ContentView`: full-screen semicircle angle ring, fixed target marker and tolerance zone, live and target angle readouts, progress markers, and green completion checks. `CompletionCheckmark` draws the circular success animation; Reduce Motion shows it statically. Other interface colors are monochrome. `FoldFeedback` owns haptic triggers. Layout adapts to Duo's reserved regions.
 
-Each challenge has three targets in 45°–135°, separated by 30°–65°, with inclusive ±5° tolerance. The first two complete on raw entry. The third accumulates 350 ms of monotonic elapsed time while the latest real reading is in range. A subsequent exit pauses; re-entry resumes. Stationary silence is allowed. Inactivity or explicit capture loss invalidates the attempt, so background time can never finish a hold. Generation identifiers and task cancellation isolate timers from replacement requests.
+Each challenge has three targets in 135°–175°, separated by 30°–40°, with inclusive ±5° tolerance. No accepted match is below 130°. The first two complete on raw entry. The third accumulates 350 ms of monotonic elapsed time while the latest real reading is in range. A subsequent exit pauses; re-entry resumes. Stationary silence is allowed. Inactivity or explicit capture loss invalidates the attempt, so background time can never finish a hold. Generation identifiers and task cancellation isolate timers from replacement requests.
 
 Validation replays the raw events and completion timestamp, rather than trusting UI completion markers. The initial angular-speed ceiling is **1,440°/s** in `TrajectoryValidator.Policy`. No adjacent-angle cap applies. One observed intermediate reading must lie between consecutive target tolerance regions. Calibrate the speed ceiling from real Duo before tightening it. A maximum of 30,000 raw samples bounds a single attempt's memory.
 
@@ -43,6 +43,6 @@ Still requires physical Duo and an HTTPS deployment:
 
 After validation, native logs include sample count, maximum callback interval, and maximum observed angular speed. Safari's console prints launch, challenge, local validation, browser return, and full round-trip durations in milliseconds. The completed tab also keeps these in `sessionStorage['duofold.completed.v1']` for inspection. Cross-app times use device wall-clock timestamps and are estimates; challenge and validation use a monotonic clock. Measure under five seconds; do not assume it.
 
-All custom drawing follows actual input without decorative motion or smoothing; this also avoids nonessential animation under Reduce Motion. System layout handles reserved fold regions; essential controls stay within the arrangement's primary region. Physical folding is required even with VoiceOver; an alternative verification route is outside scope.
+The protractor uses brief display-only interpolation between raw hinge updates; capture and validation never use those interpolated values. Reduce Motion disables interpolation. System layout handles reserved fold regions; essential controls stay within the arrangement's primary region. Physical folding is required even with VoiceOver; an alternative verification route is outside scope.
 
 Backend work is deferred until this entire local flow passes real-device acceptance.
