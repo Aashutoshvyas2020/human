@@ -15,7 +15,7 @@ struct ContentView: View {
         Color(uiColor: .systemBackground).ignoresSafeArea()
 
         ArrangementView {
-          information
+          information(holdRingSize: min(128, max(76, geometry.size.height * 0.21)))
         } secondary: {
           FoldProtractor(
             angle: session.capture.angle,
@@ -29,6 +29,7 @@ struct ContentView: View {
 
         if showStepCheck && session.phase == .active {
           checkScreen(size: geometry.size, completed: false)
+            .id(session.feedback.step)
         }
 
         if session.phase == .verified {
@@ -49,7 +50,7 @@ struct ContentView: View {
       checkTask?.cancel()
       showStepCheck = true
       checkTask = Task { @MainActor in
-        do { try await Task.sleep(for: .milliseconds(320)) } catch { return }
+        do { try await Task.sleep(for: .milliseconds(900)) } catch { return }
         showStepCheck = false
       }
     }
@@ -65,7 +66,7 @@ struct ContentView: View {
     }
   }
 
-  private var information: some View {
+  private func information(holdRingSize: CGFloat) -> some View {
     VStack(spacing: 14) {
       Text("Bend to the target angle")
         .font(.system(.title2, design: .rounded).weight(.semibold))
@@ -76,7 +77,13 @@ struct ContentView: View {
         progressMarkers
       }
 
-      Spacer(minLength: 80)
+      if session.phase == .active && session.machine?.step == 2 {
+        Spacer(minLength: 10)
+        holdProgress(size: holdRingSize)
+        Spacer(minLength: 10)
+      } else {
+        Spacer(minLength: 80)
+      }
 
       if session.phase == .checking {
         ProgressView("Checking…")
@@ -97,10 +104,6 @@ struct ContentView: View {
         Text("Open verification from the website")
           .font(.subheadline)
           .foregroundStyle(.secondary)
-      }
-
-      if session.phase == .active && session.machine?.step == 2 {
-        holdProgress
       }
 
       angleReadouts
@@ -159,32 +162,23 @@ struct ContentView: View {
     .accessibilityValue(value.map { "\(Int($0.rounded())) degrees" } ?? "Unavailable")
   }
 
-  private var holdProgress: some View {
+  private func holdProgress(size: CGFloat) -> some View {
     VStack(spacing: 8) {
-      Text(session.isInRange ? "HOLD" : "RETURN TO TARGET")
+      Text(session.isInRange ? "HOLD" : (session.hasEnteredHold ? "RETURN TO TARGET" : "MATCH TARGET"))
         .font(.caption.weight(.semibold))
         .tracking(1.2)
-      GeometryReader { geometry in
-        ZStack(alignment: .leading) {
-          Capsule().fill(Color.primary.opacity(0.12))
-          Capsule().fill(Color.primary)
-            .frame(width: geometry.size.width * max(0, min(1, session.progress)))
-        }
-      }
-      .frame(height: 8)
+      HoldCheckRing(progress: session.progress, size: size)
     }
-    .frame(maxWidth: 260)
-    .padding(.bottom, 8)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Final fold hold progress")
-    .accessibilityValue("\(Int(session.progress * 100)) percent")
+    .accessibilityValue("\(Int(session.progress * 100)) percent, \(session.isInRange ? "holding" : "paused")")
   }
 
   private func checkScreen(size: CGSize, completed: Bool) -> some View {
     ZStack {
       Color(uiColor: .systemBackground).ignoresSafeArea()
       VStack(spacing: 16) {
-        CompletionCheckmark(size: min(size.width, size.height) * 0.62)
+        CompletionCheckmark(size: min(size.width, size.height) * 0.62, startsFilled: completed)
         if completed {
           Text("Human Verified")
             .font(.system(.title, design: .rounded).weight(.semibold))

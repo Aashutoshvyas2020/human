@@ -3,7 +3,7 @@ import Foundation
 struct FoldChallenge: Equatable, Sendable {
   var targets: [Double]
   static let tolerance = 5.0
-  static let holdDuration = 0.350
+  static let holdDuration = 0.800
   // Tolerance never accepts a hinge angle below 130 degrees.
   static let targetRange = 135...175
   static let targetSeparation = 30.0...40.0

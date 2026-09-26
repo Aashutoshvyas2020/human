@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CompletionCheckmark: View {
   var size: CGFloat
+  var startsFilled = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var ringProgress: CGFloat = 0
   @State private var checkVisible = false
@@ -27,9 +28,13 @@ struct CompletionCheckmark: View {
         checkVisible = true
         return
       }
-      withAnimation(.smooth(duration: 0.20)) { ringProgress = 1 }
-      do { try await Task.sleep(for: .milliseconds(115)) } catch { return }
-      withAnimation(.bouncy(duration: 0.20)) { checkVisible = true }
+      if startsFilled {
+        ringProgress = 1
+      } else {
+        withAnimation(.smooth(duration: 0.48)) { ringProgress = 1 }
+      }
+      do { try await Task.sleep(for: .milliseconds(startsFilled ? 180 : 340)) } catch { return }
+      withAnimation(.spring(duration: 0.42, bounce: 0.18)) { checkVisible = true }
     }
   }
 }

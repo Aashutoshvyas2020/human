@@ -5,7 +5,7 @@ final class DuoFoldCoreTests: XCTestCase {
   let challenge = FoldChallenge(targets: [135, 170, 135])
   let validator = TrajectoryValidator()
 
-  func trace(_ values: [(Double, Double)], end: Double = 1.2) -> FoldTrace {
+  func trace(_ values: [(Double, Double)], end: Double = 1.6) -> FoldTrace {
     FoldTrace(samples: values.map { HingeSample(timestamp: $0.0, angle: $0.1) }, startedAt: 0, completedAt: end)
   }
   var valid: FoldTrace { trace([(0.1, 135), (0.3, 152.5), (0.5, 170), (0.7, 152.5), (0.8, 135)]) }
@@ -37,16 +37,16 @@ final class DuoFoldCoreTests: XCTestCase {
   func testAccumulatedHoldPausesOutsideRange() {
     var value = valid
     value.samples += [HingeSample(timestamp: 0.95, angle: 145), HingeSample(timestamp: 1.5, angle: 135)]
-    value.completedAt = 1.71
+    value.completedAt = 2.16
     assertValid(value)
-    value.completedAt = 1.69
+    value.completedAt = 2.14
     assertFailure(value, .incomplete)
   }
   func testMissingIntermediateReadingRejectedDespitePlausibleSpeed() {
     assertFailure(trace([(0.1, 135), (0.5, 170), (0.7, 152.5), (0.8, 135)]), .missingIntermediateReading)
   }
   func testSparseCallbacksAndLargeAdjacentAnglesAllowed() {
-    assertValid(trace([(0.01, 135), (0.4, 160), (0.7, 170), (1.0, 145), (1.3, 135)], end: 1.7))
+    assertValid(trace([(0.01, 135), (0.4, 160), (0.7, 170), (1.0, 145), (1.3, 135)], end: 2.1))
   }
   func testImpossibleJump() {
     assertFailure(trace([(0.1, 135), (0.101, 152.5), (0.5, 170), (0.7, 152.5), (0.8, 135)]), .implausibleMotion)
@@ -58,20 +58,20 @@ final class DuoFoldCoreTests: XCTestCase {
   }
   func testIncompleteAndInterruptedCapture() {
     var value = valid
-    value.completedAt = 1.0
+    value.completedAt = 1.59
     assertFailure(value, .incomplete)
     value.completedAt = nil
     assertFailure(value, .incomplete)
-    value.completedAt = 1.2
+    value.completedAt = 1.6
     value.interruptedAt = 0.9
     assertFailure(value, .interrupted)
   }
   func testClockBoundaryAndHoldExit() {
     var machine = ChallengeStateMachine(challenge: challenge)
     for sample in valid.samples { machine.receive(sample) }
-    machine.advanceTime(to: 1.149)
+    machine.advanceTime(to: 1.599)
     XCTAssertFalse(machine.isComplete)
-    machine.advanceTime(to: 1.15)
+    machine.advanceTime(to: 1.6)
     XCTAssertTrue(machine.isComplete)
   }
   func testGeneratorConstraintsAcrossStartingAngles() {

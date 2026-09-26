@@ -34,6 +34,7 @@ final class FoldSession {
     return abs(angle - target) <= FoldChallenge.tolerance
   }
   var visualTarget: Double? { phase == .active ? (snapAngle ?? target) : nil }
+  var hasEnteredHold: Bool { holdCueSent }
 
   func open(_ url: URL) {
     cancelWork()
@@ -179,7 +180,7 @@ final class FoldSession {
         self.phase = .verified
         self.feedback.completeStep()
         self.announcement = "Human Verified"
-        do { try await Task.sleep(for: .milliseconds(420)) } catch { return }
+        do { try await Task.sleep(for: .milliseconds(1_050)) } catch { return }
         guard !Task.isCancelled, self.attempt == id, self.isActive else { return }
         self.prepareReturn()
       }
