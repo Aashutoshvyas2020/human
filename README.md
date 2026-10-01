@@ -1,48 +1,55 @@
-# Duo Fold
+# Human · Duo Fold
 
-A local-first physical CAPTCHA for iPhone Duo. Native SwiftUI app and framework-free reference website. No backend, accounts, or simulated sensor path.
+An experimental, local-first human-verification flow for iPhone Duo. The native SwiftUI app asks a person to match three hinge angles; a small static website opens the app and receives the result.
 
-## Run
+This repository is a working prototype, not a secure CAPTCHA service. Validation runs on the device, and the browser trusts a URL callback. A modified app or forged callback can claim success. Do not use it to protect accounts, payments, or other sensitive actions.
 
-Build and run the **Duo Fold** target in Bitrig with the installed iOS 27.1 SDK. Minimum deployment version is 27.1; iPhone is the only target family. The project keeps Bitrig's scaffold bundle identifier until device signing requires a permanent identifier through Bitrig.
+## What is here
 
-Publish the contents of `Website/` on an HTTPS static host (retain relative paths). No configuration or build step is required. Open that URL in Safari on the Duo with the app installed and tap **Verify**. The callback is derived from the deployed page URL. Use **Open Duo Fold** if Safari blocks automatic app opening.
+| Path | Purpose |
+| --- | --- |
+| `App/` | iOS app, hinge capture, fold UI, haptics, and session lifecycle |
+| `App/Core/` | Challenge generation, trace validation, and deep-link contract |
+| `Website/` | Dependency-free HTTPS demo page and browser tests |
+| `Tests/` | Swift package tests for the core logic |
+| `Project.json` | Bitrig-managed iOS project configuration |
+| `Package.swift` | Standalone Swift package for testing `App/Core/` |
 
-Flow: **Verify → Bend to the target angle → fold → fold → hold → Checking… → Human Verified → Verified ✓**.
+## Try the flow
 
-The site must return to the same browser profile/origin that started verification. It uses localStorage for the pending session across tabs, and sessionStorage to retain the successful display in the returning tab. Only the latest pending session is active. This is intentionally demo-level trust; forged callbacks and modified clients are outside scope.
+1. Build and run **Duo Fold** in Bitrig with Xcode 27.1 / iOS 27.1 SDK. The app targets iOS 27.1 and iPhone Duo. The Bitrig simulator can show the UI; a physical Duo is needed for real hinge acceptance.
+2. Host the contents of `Website/` at an HTTPS URL, preserving the relative files. A static host is enough; no build or backend is required. GitHub Pages can serve the `Website/` directory through a Pages workflow or published branch, but Pages is not configured by this repository.
+3. On the Duo, open that URL in Safari and tap **Verify**. If Safari blocks automatic opening, tap **Open Duo Fold**.
+4. Match the three displayed angles. Hold the final angle to finish. The app returns to the same HTTPS page, which displays **Verified ✓**.
 
-## Architecture and timing
+For a direct app-launch check, use this URL with the installed app:
 
-- `App/Core/`: pure generator, sample/trace types, event reducer, replay validator, and URL contract. Also compiled as a Swift package for deterministic tests.
-- `HingeCapture`: real `onHingeChange` input plus a `ContinuousClock`. No timers generate sensor readings.
-- `FoldSession`: main-actor lifecycle, attempt cancellation, feedback events, local validation, and browser return.
-- `FoldProtractor` / `ContentView`: full-screen semicircle angle ring, fixed target marker and tolerance zone, live and target angle readouts, progress markers, and green completion checks. Every target visually snaps to alignment on a raw ±5° match; steps one and two show that snap briefly before their completion check. `HoldCheckRing` shows accumulated final-hold progress around a check; `CompletionCheckmark` draws the slower success animation. Reduce Motion shows completion statically. Other interface colors are monochrome. `FoldFeedback` owns haptic triggers. A stable overlay keeps the challenge in place as the Duo folds.
+```text
+duofold://verify?session=ABC123abc456&callback=https%3A%2F%2Fexample.com
+```
 
-Each challenge has three targets in 135°–175°, separated by 30°–40°, with inclusive ±5° tolerance. No accepted match is below 130°. The first two complete on raw entry. The third accumulates 800 ms of monotonic elapsed time while the latest real reading is in range. A subsequent exit pauses; re-entry resumes. Stationary silence is allowed. Inactivity or explicit capture loss invalidates the attempt, so background time can never finish a hold. Generation identifiers and task cancellation isolate timers from replacement requests.
+`example.com` is only a placeholder return destination. For the complete browser experience, start from the hosted demo page so it creates and stores a fresh session and supplies its own callback URL.
 
-Validation replays the raw events and completion timestamp, rather than trusting UI completion markers. The initial angular-speed ceiling is **1,440°/s** in `TrajectoryValidator.Policy`. No adjacent-angle cap applies. One observed intermediate reading must lie between consecutive target tolerance regions. Calibrate the speed ceiling from real Duo before tightening it. A maximum of 30,000 raw samples bounds a single attempt's memory.
+## How verification works
 
-## Tests
+The site creates a 12-character session ID, stores it in browser storage, and opens `duofold://verify` with an HTTPS callback. The app generates three separated targets between 135° and 175°, checks real hinge samples in order with ±5° tolerance, and requires an accumulated 800 ms hold on the final target. The core validator replays the raw trace before the app opens the callback with `result=success`. The site accepts only a return matching its pending session.
+
+The current speed policy allows up to 1,440°/s and needs calibration on physical hardware. No fake sensor or timer-generated hinge readings are included. Backgrounding during an attempt invalidates it. The browser's pending state is local to its origin and profile.
+
+## Test
 
 ```sh
 swift test
 node --test Website/*.test.mjs
 ```
 
-Core tests cover stationary and accumulated holds, tolerance boundaries, order, correction, sparse callbacks, missing intermediates, implausible motion, timestamp validity, capture interruption, generation, and callback parsing. Website tests cover encoding, pending session matching, new-tab return, reload, replay, manual fallback, unavailable storage, and phase timing.
+Swift tests cover generation, ordering, tolerance, holds, interruptions, trace validity, and URL parsing. Browser tests cover launch URLs, pending sessions, return matching, replay, and storage failures. The Swift package tests core logic on macOS; they do not exercise iOS hinge hardware.
 
-## Device acceptance and measurement
+## Current limits
 
-Still requires physical Duo and an HTTPS deployment:
+- Requires iOS 27.1 SDK for Duo APIs. Physical Duo end-to-end behavior, accessibility poses, and timing still need device acceptance.
+- No server-issued challenge, server-side proof, replay protection, or cryptographic attestation. URL callbacks and browser storage are suitable for demonstration only.
+- No live demo URL or GitHub Pages deployment is configured here.
+- App retains Bitrig's scaffold bundle identifier until device signing is configured.
 
-- Website opens installed app; real folds drive silhouette; hold completes without repeated stationary events; callback returns to Verified.
-- Book/table poses, closed/open transitions, rotation, Split View, large Dynamic Type, light/dark appearance, Reduce Motion, VoiceOver, contrast, and haptics.
-- Interrupt a hold with Home/lock/system UI; retry must use a fresh challenge. Open another verification URL during a hold; old timer must never verify it.
-- Confirm unavailable state on a non-Duo device and manual Return to website recovery when URL opening fails.
-
-After validation, native logs include sample count, maximum callback interval, and maximum observed angular speed. Safari's console prints launch, challenge, local validation, browser return, and full round-trip durations in milliseconds. The completed tab also keeps these in `sessionStorage['duofold.completed.v1']` for inspection. Cross-app times use device wall-clock timestamps and are estimates; challenge and validation use a monotonic clock. Measure under five seconds; do not assume it.
-
-The protractor renders each raw hinge update without interpolation. Its visual canvas extends across the full display width; central labels compensate for Duo's asymmetric side safe area, while angle readouts remain inset. Challenge layout does not use fold-responsive `ArrangementView`, so the protractor, target markers, and angle readouts do not jump between panes when the fold region appears. No documented app API disables iOS's own display-fold transition. Physical folding is required even with VoiceOver; an alternative verification route is outside scope.
-
-Backend work is deferred until this entire local flow passes real-device acceptance.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development notes and [SECURITY.md](SECURITY.md) for the security boundary.
