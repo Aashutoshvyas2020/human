@@ -53,3 +53,7 @@ Swift tests cover generation, ordering, tolerance, holds, interruptions, trace v
 - App retains Bitrig's scaffold bundle identifier until device signing is configured.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development notes and [SECURITY.md](SECURITY.md) for the security boundary.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
